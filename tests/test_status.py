@@ -1,7 +1,8 @@
 import unittest
-from gcppistatus import *
+from gcppistatus.status import *
 
 class StatusTests(unittest.TestCase):
 
 	def testJSON(self):
-		self.assertEqual(hello_world(), 'hello world')
+		js = jsonstatus()
+		self.assertEqual(js.hello_world(), 'hello world')
