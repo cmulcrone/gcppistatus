@@ -31,11 +31,10 @@ class status:
             'high': lambda x: x * 3,
         }
 
-
         severity_score = 0
         for status in jsontext:
             if status['severity'] in severity_weights:
-            	severity_score += severity_weights[status['severity']](1)  
+                severity_score += severity_weights[status['severity']](1)
         return severity_score
     '''
     Metrics - 
@@ -60,11 +59,3 @@ class status:
     except KeyError:
         severity_scores[status['severity']] = 1
     '''
-
-    
-    def score_severity(player):
-        score = 0
-        for stat in player._stats:
-            if stat in scoring:
-                score += scoring[stat](getattr(player,stat))    
-        return score
