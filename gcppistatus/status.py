@@ -36,6 +36,9 @@ class status:
             if status['severity'] in severity_weights:
                 severity_score += severity_weights[status['severity']](1)
         return severity_score
+
+    def checkConnectivity(self, jsontext):
+
     '''
     Metrics - 
         - Recency of last event

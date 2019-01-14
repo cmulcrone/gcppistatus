@@ -14,3 +14,8 @@ class StatusTests(unittest.TestCase):
         ps = status('public')
         json = ps.getJSON('https://status.cloud.google.com/incidents.json')
         self.assertGreater(ps.calculateSeverity(json), 0)
+
+    def testConnectivityError(self):
+        ps = status('public')
+        json = ps.getJSON('https://status.cloud.google.com/incidents.jso')
+        self.assertEquatls(ps.checkConnectivity(json), 200)
