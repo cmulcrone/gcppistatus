@@ -18,4 +18,4 @@ class StatusTests(unittest.TestCase):
     def testConnectivityError(self):
         ps = status('public')
         json = ps.getJSON('https://status.cloud.google.com/incidents.jso')
-        self.assertEquatls(ps.checkConnectivity(json), 200)
+        self.assertEquals(ps.checkConnectivity(json), 200)

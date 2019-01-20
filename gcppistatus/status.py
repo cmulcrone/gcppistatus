@@ -16,13 +16,15 @@ class status:
         self.recency_value = 0
         self.incident_volume = 0
 
-    def hello_world(self):
-        return 'hello world'
-
     def getJSON(self, url):
-        response = requests.get(url)
-        status = response.json()
-        return status
+        try:
+            response = requests.get(url)
+            jsontext = response.json()
+        except requests.exceptions.ConnectionError:
+            return False
+        except requests.exceptions.HTTPError:
+            return False
+        return jsontext
 
     def calculateSeverity(self, jsontext):
         severity_weights = {
@@ -37,15 +39,13 @@ class status:
                 severity_score += severity_weights[status['severity']](1)
         return severity_score
 
-    def checkConnectivity(self, jsontext):
-
     '''
-    Metrics - 
+    Metrics -
         - Recency of last event
         - Severity score
         - Incident volume (maybe tie to recency)
         - Product area
-    Visualizations - 
+    Visualizations -
         - Color
         - Brightness
         - Blinking/Strobe/Pulse
