@@ -20,8 +20,10 @@ class status:
         try:
             response = requests.get(url)
             jsontext = response.json()
+        except ValueError:
+        	return 'Error Decoding JSON'
         except requests.exceptions.ConnectionError:
-            return False
+            return "ConnectionError"
         except requests.exceptions.HTTPError:
             return False
         return jsontext

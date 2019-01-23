@@ -1,7 +1,7 @@
+import board
+import neopixel
 
-
-class neopixels: 
+class neopixels:
 
     def __init__(self):
-
-    def 
+        return True
