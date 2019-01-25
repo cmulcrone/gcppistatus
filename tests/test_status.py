@@ -5,17 +5,18 @@ from gcppistatus.status import *
 class StatusTests(unittest.TestCase):
 
     def testJSON(self):
-        ps = status('public')
+        url = 'https://status.cloud.google.com/incidents.json'
+        ps = status('public', url)
         # self.assertEqual(ps.hello_world(), 'hello world')
-        self.assertIsInstance(ps.getJSON(
-            'https://status.cloud.google.com/incidents.json'), list)
+        self.assertIsInstance(ps.getJSON(), list)
 
     def testSeverity(self):
-        ps = status('public')
-        json = ps.getJSON('https://status.cloud.google.com/incidents.json')
+        url = 'https://status.cloud.google.com/incidents.json'
+        ps = status('public', url)
+        json = ps.getJSON()
         self.assertGreater(ps.calculateSeverity(json), 0)
 
     def testConnectivityError(self):
-        ps = status('public')
-        json = ps.getJSON('https://status.cloud.google.com/incidents.jso')
-        self.assertEquals(ps.getJSON(json), 'Error Decoding JSON')
+        url = 'https://status.cloud.google.com/incidents.jso'
+        ps = status('public', url)
+        self.assertEquals(ps.getJSON(), 'Error Decoding JSON')

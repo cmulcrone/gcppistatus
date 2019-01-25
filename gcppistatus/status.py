@@ -10,22 +10,26 @@ class status:
         'high': lambda x: x * 3,
     }
 
-    def __init__(self, mode):
+    def __init__(self, mode, url):
         self.mode = mode
-        self.severity_value = 0
+        self.severity_value = self.calculateSeverity(self.getJSON())
         self.recency_value = 0
         self.incident_volume = 0
+        self.url = url
 
-    def getJSON(self, url):
+    def getJSON(self):
         try:
-            response = requests.get(url)
+            response = requests.get(self.url)
             jsontext = response.json()
         except ValueError:
-        	return 'Error Decoding JSON'
+            return 'Error Decoding JSON'
+            # TODO - set error state for Neopixel notification
         except requests.exceptions.ConnectionError:
             return "ConnectionError"
+            # TODO - set error state for Neopixel notification
         except requests.exceptions.HTTPError:
             return False
+            # TODO - set error state for Neopixel notification
         return jsontext
 
     def calculateSeverity(self, jsontext):
