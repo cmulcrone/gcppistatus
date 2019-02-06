@@ -12,10 +12,10 @@ class status:
 
     def __init__(self, mode, url):
         self.mode = mode
+        self.url = url
         self.severity_value = self.calculateSeverity(self.getJSON())
         self.recency_value = 0
         self.incident_volume = 0
-        self.url = url
 
     def getJSON(self):
         try:
