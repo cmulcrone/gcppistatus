@@ -55,12 +55,20 @@ class status:
         today = datetime.date.today()
 
         severity_score = 0
+        severity_score_previous = 0
+        severity_score_current = 0
         for status in jsontext:
             statusdate = dateutil.parser.parse(status['begin'])
             
             if today - margin <= statusdate.date() and status['severity'] in severity_weights:
-                severity_score += severity_weights[status['severity']](1)
-        return severity_score
+                severity_score_current += severity_weights[status['severity']](1)
+
+            if today - margin*2 <= statusdate.date() <= today - margin and status['severity'] in severity_weights:
+                severity_score_previous += severity_weights[status['severity']](1)
+        
+        severity_score = severity_score_current - severity_score_previous
+
+        return severity_score_previous
 
     def calculateRecency(self, jsontext):
         recency_weights = {
