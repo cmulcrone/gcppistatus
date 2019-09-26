@@ -25,6 +25,7 @@ class status:
         self.mode = mode
         self.url = url
         self.json = self.getJSON()
+        self.check_period = 30
         self.severity_value = self.calculateSeverity(self.json)
         self.recency_value = self.calculateRecency(self.json)
         self.incident_volume = 0
@@ -51,7 +52,7 @@ class status:
             'high': lambda x: x * 3,
         }
 
-        margin = datetime.timedelta(days = 90)
+        margin = datetime.timedelta(days = self.check_period)
         today = datetime.date.today()
 
         severity_score = 0
