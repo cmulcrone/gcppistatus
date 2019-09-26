@@ -68,7 +68,7 @@ class status:
         
         severity_score = severity_score_current - severity_score_previous
 
-        return severity_score_previous
+        return severity_score
 
     def calculateRecency(self, jsontext):
         recency_weights = {
