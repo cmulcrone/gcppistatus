@@ -15,12 +15,6 @@ class gcpstatus:
 
 class status:
 
-    severity_weights = {
-        'low': lambda x: x * 1,
-        'medium': lambda x: x * 2,
-        'high': lambda x: x * 3,
-    }
-
     def __init__(self, mode, url):
         self.mode = mode
         self.url = url
@@ -55,19 +49,27 @@ class status:
         margin = datetime.timedelta(days = self.check_period)
         today = datetime.date.today()
 
-        severity_score = 0
-        severity_score_previous = 0
+        severity_score_dict = {}
         severity_score_current = 0
+        m = 1
+
         for status in jsontext:
             statusdate = dateutil.parser.parse(status['begin'])
-            
-            if today - margin <= statusdate.date() and status['severity'] in severity_weights:
+
+            if not today - (margin * m) <= statusdate.date():
+                severity_score_dict[m] = severity_score_current
+                severity_score_current = 0
+                m += 1
+            else:
                 severity_score_current += severity_weights[status['severity']](1)
 
-            if today - margin*2 <= statusdate.date() <= today - margin and status['severity'] in severity_weights:
-                severity_score_previous += severity_weights[status['severity']](1)
-        
-        severity_score = severity_score_current - severity_score_previous
+        valmax = severity_score_dict[max(severity_score_dict.keys(), key=(lambda k: severity_score_dict[k]))]
+        valmin = severity_score_dict[min(severity_score_dict.keys(), key=(lambda k: severity_score_dict[k]))]
+
+        #TODO: Figure out how to handle improvement (take absolute value?)
+        z = (severity_score_dict[1] - severity_score_dict[2] - valmin) / (valmax - valmin)
+
+        severity_score = 0
 
         return severity_score
 
