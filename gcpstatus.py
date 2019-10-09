@@ -13,11 +13,11 @@ import adafruit_fancyled.adafruit_fancyled as fancy
 
 NUMPIXELS = 64 #Number of neopixels
 PI_PIN = board.D18 #Raspberry PI data pin 
-BRIGHTNESS = .1 #Neopixel default brightness
-STATUS_CHECK_DELAY = 60 #Delay between polling for updated status JSON
+BRIGHTNESS = 1.0 #Neopixel default brightness
+STATUS_CHECK_DELAY = 10 #Delay between polling for updated status JSON
 SEVERITY_VALUE = 0.0 #Global severity value to be passed between threads
-HEALTHY_COLOR = "0x00FF00" #Color for healthy GCP status
-UNHEALTHY_COLOR = "0xFF0000" #Color for unhealthy GCP status
+HEALTHY_COLOR = fancy.CRGB(0.0, 1.0, 0.0) #Color for healthy GCP status
+UNHEALTHY_COLOR = fancy.CRGB(1.0, 0.0, 0.0) #Color for unhealthy GCP status
 
 class gcpstatus:
 
@@ -175,11 +175,14 @@ def run_lights( threadname, ):
         intensity = round(SEVERITY_VALUE*63)
         print(intensity)
         #gradient = linear_gradient(GOOD_COLOR, BAD_COLOR, 64)
-        gradient = [(0.0, HEALTHY_COLOR),
-                    (1.0, UNHEALTHY_COLOR)]
-        palette = fancy.expand_gradient(gradient, 64)
-        color = fancy.palette_lookup(palette, 
-        pixels.fill((palette["r"][intensity], palette["g"][intensity], gradient["b"][intensity]))
+        grad = [ (0.0, HEALTHY_COLOR),
+                 (1.0, UNHEALTHY_COLOR) ]
+        palette = fancy.expand_gradient(grad, 64)
+        color = fancy.palette_lookup(palette, (intensity/100)) 
+        levels = (0.25, 0.3, 0.15)
+        color = fancy.gamma_adjust(color, brightness=levels)
+        pixels.fill(color.pack())
+        #pixels.fill((palette["r"][intensity], palette["g"][intensity], gradient["b"][intensity]))
         time.sleep(10)
 
 
