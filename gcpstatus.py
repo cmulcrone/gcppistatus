@@ -3,6 +3,7 @@
 
 import requests
 import random
+import math
 import time
 import datetime
 import dateutil.parser
@@ -107,48 +108,6 @@ class status:
                 recency_score += recency_weights[status['severity']](1)
         return recency_score
 
-#Converts hex value to RGB dict
-def hex_to_RGB(hex):
-    return [int(hex[i:i+2], 16) for i in range(1,6,2)]
-
-#Converts RGB dict into hex string value
-def RGB_to_hex(RGB):
-    RGB = [int(x) for x in RGB]
-    return "#"+"".join(["0{0:x}".format(v) if v < 16 else
-              "{0:x}".format(v) for v in RGB])
-
-#Takes dict with color values and returns dictionary with hex and individual RGB values 
-def color_dict(gradient):
-    return {"hex":[RGB_to_hex(RGB) for RGB in gradient],
-        "r":[RGB[0] for RGB in gradient],
-        "g":[RGB[1] for RGB in gradient],
-        "b":[RGB[2] for RGB in gradient]}
-
-#Takes hex values for start and end colors, number of steps in gradient and returns
-#a dict of dicts with hex & RGB values for each step
-def linear_gradient(start_hex, finish_hex="#FFFFFF", n=10):
-    s = hex_to_RGB(start_hex)
-    f = hex_to_RGB(finish_hex)
-
-    RGB_list = [s]
-    for t in range(1, n):
-        curr_vector = [
-            int(s[j] + (float(t)/(n-1))*(f[j]-s[j]))
-            for j in range(3)
-        ]
-        RGB_list.append(curr_vector)
-
-    return color_dict(RGB_list)
-
-def chasing_lights():
-    position = 0
-
-    while j < NUMPIXELS*2:
-        position += 1
-
-        while i < NUMPIXELS:
-            pixel[i] = ((0,0,0))
-
 #Thread function that periodically checks the public GCP status JSON 
 def status_check( threadName ):
     global SEVERITY_VALUE
@@ -159,7 +118,7 @@ def status_check( threadName ):
         if time.time() - timer > STATUS_CHECK_DELAY:
             currentStatus = gcpstatus().getStatus()
             SEVERITY_VALUE = currentStatus.severity_value
-            print(SEVERITY_VALUE)
+            print("SevValue=",SEVERITY_VALUE)
 
 #Thread function to control light behavior based on valus set in status_check
 def run_lights( threadname, ):
@@ -169,22 +128,33 @@ def run_lights( threadname, ):
     global HEALTHY_COLOR
     global UNHEALTHY_COLOR
 
-    pixels = neopixel.NeoPixel(board.D18, NUMPIXELS, brightness=BRIGHTNESS)
+    pixels = neopixel.NeoPixel(board.D18, NUMPIXELS, auto_write=False, brightness=BRIGHTNESS)
 
     while True:
         intensity = round(SEVERITY_VALUE*63)
-        print(intensity)
-        #gradient = linear_gradient(GOOD_COLOR, BAD_COLOR, 64)
+        print("Intensity=",intensity)
         grad = [ (0.0, HEALTHY_COLOR),
                  (1.0, UNHEALTHY_COLOR) ]
         palette = fancy.expand_gradient(grad, 64)
-        color = fancy.palette_lookup(palette, (intensity/100)) 
-        levels = (0.25, 0.3, 0.15)
-        color = fancy.gamma_adjust(color, brightness=levels)
-        pixels.fill(color.pack())
-        #pixels.fill((palette["r"][intensity], palette["g"][intensity], gradient["b"][intensity]))
-        time.sleep(10)
-
+        
+        i=0
+        #TODO: Figure out how to clip this value to allow for dimming
+        MAXIMUMBRIGHT=1.0
+        #TODO: Figure out relationship of speed to duty cycle for calculating steps in the loop
+        SPEED=.01
+        
+        while i < 510:
+            color = fancy.palette_lookup(palette, (intensity/100)) 
+            #blevel = float(i) / 10.0
+            #TODO: See if you can simplify this code? Check spreadsheet
+            testblevel = (MAXIMUMBRIGHT / 2.0 * (1.0 + math.sin(SPEED * i)))/MAXIMUMBRIGHT
+            #print("SINE Value=", testblevel)
+            levels = (testblevel, testblevel, testblevel)
+            color = fancy.gamma_adjust(color, brightness=levels)
+            #print("Color=",color)
+            pixels.fill(color.pack())
+            pixels.show()
+            i+=1
 
 _thread.start_new_thread( status_check, ("StatusCheck Thread", ))
 _thread.start_new_thread( run_lights, ("Running Lights Thread", ))
