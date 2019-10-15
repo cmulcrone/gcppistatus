@@ -147,6 +147,9 @@ def run_lights( threadname, ):
             color = fancy.palette_lookup(palette, (intensity/100)) 
             #blevel = float(i) / 10.0
             #TODO: See if you can simplify this code? Check spreadsheet
+            #TODO: Add "breathing" mode
+            #TODO: See if this can be pegged to a clock/timing, not loop
+            #TODO: Update idle, startup, and internet not found to rotate G Colors
             testblevel = (MAXIMUMBRIGHT / 2.0 * (1.0 + math.sin(SPEED * i)))/MAXIMUMBRIGHT
             #print("SINE Value=", testblevel)
             levels = (testblevel, testblevel, testblevel)
