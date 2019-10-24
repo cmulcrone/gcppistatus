@@ -137,21 +137,22 @@ def run_lights( threadname, ):
     palette = fancy.expand_gradient(grad, 64)
         
     #TODO: Figure out how to clip this value to allow for dimming
-    MAXIMUMBRIGHT=1.0
+    MAXIMUMBRIGHT=0.8
     #TODO: Figure out relationship of speed to duty cycle for calculating steps in the loop
-    SPEED=.01
+    SPEED=1.0
     #i=0
     while True:
         intensity = round(SEVERITY_VALUE*63) 
         color = fancy.palette_lookup(palette, (intensity/100)) 
         seconds = time.time()
+        frequency = 5
         #blevel = float(i) / 10.0
         #TODO: See if you can simplify this code? Check spreadsheet
         #TODO: Add "breathing" mode
-        #testblevel = math.exp(
+        testblevel = (math.exp(math.sin((seconds % 60)/frequency))-(1-math.e))*(MAXIMUMBRIGHT/(math.e-(1/math.e)))
         #TODO: Update idle, startup, and internet not found to rotate G Colors
         #TODO: Use seconds % SOMEVALUE to control frequency
-        testblevel = (MAXIMUMBRIGHT / 2.0 * (1.0 + math.sin(SPEED * seconds)))/MAXIMUMBRIGHT
+        #testblevel = (MAXIMUMBRIGHT / 2.0 * (1.0 + math.sin(SPEED * seconds)))/MAXIMUMBRIGHT
         print("SINE Value=", testblevel)
         #print("Time since epoch",time.time())
         levels = (testblevel, testblevel, testblevel)
