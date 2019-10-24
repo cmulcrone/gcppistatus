@@ -130,34 +130,36 @@ def run_lights( threadname, ):
 
     pixels = neopixel.NeoPixel(board.D18, NUMPIXELS, auto_write=False, brightness=BRIGHTNESS)
 
+    intensity = round(SEVERITY_VALUE*63)
+    print("Intensity=",intensity)
+    grad = [ (0.0, HEALTHY_COLOR),
+             (1.0, UNHEALTHY_COLOR) ]
+    palette = fancy.expand_gradient(grad, 64)
+        
+    #TODO: Figure out how to clip this value to allow for dimming
+    MAXIMUMBRIGHT=1.0
+    #TODO: Figure out relationship of speed to duty cycle for calculating steps in the loop
+    SPEED=.01
+    #i=0
     while True:
-        intensity = round(SEVERITY_VALUE*63)
-        print("Intensity=",intensity)
-        grad = [ (0.0, HEALTHY_COLOR),
-                 (1.0, UNHEALTHY_COLOR) ]
-        palette = fancy.expand_gradient(grad, 64)
-        
-        i=0
-        #TODO: Figure out how to clip this value to allow for dimming
-        MAXIMUMBRIGHT=1.0
-        #TODO: Figure out relationship of speed to duty cycle for calculating steps in the loop
-        SPEED=.01
-        
-        while i < 510:
-            color = fancy.palette_lookup(palette, (intensity/100)) 
-            #blevel = float(i) / 10.0
-            #TODO: See if you can simplify this code? Check spreadsheet
-            #TODO: Add "breathing" mode
-            #TODO: See if this can be pegged to a clock/timing, not loop
-            #TODO: Update idle, startup, and internet not found to rotate G Colors
-            testblevel = (MAXIMUMBRIGHT / 2.0 * (1.0 + math.sin(SPEED * i)))/MAXIMUMBRIGHT
-            #print("SINE Value=", testblevel)
-            levels = (testblevel, testblevel, testblevel)
-            color = fancy.gamma_adjust(color, brightness=levels)
-            #print("Color=",color)
-            pixels.fill(color.pack())
-            pixels.show()
-            i+=1
+        intensity = round(SEVERITY_VALUE*63) 
+        color = fancy.palette_lookup(palette, (intensity/100)) 
+        seconds = time.time()
+        #blevel = float(i) / 10.0
+        #TODO: See if you can simplify this code? Check spreadsheet
+        #TODO: Add "breathing" mode
+        #testblevel = math.exp(
+        #TODO: Update idle, startup, and internet not found to rotate G Colors
+        #TODO: Use seconds % SOMEVALUE to control frequency
+        testblevel = (MAXIMUMBRIGHT / 2.0 * (1.0 + math.sin(SPEED * seconds)))/MAXIMUMBRIGHT
+        print("SINE Value=", testblevel)
+        #print("Time since epoch",time.time())
+        levels = (testblevel, testblevel, testblevel)
+        color = fancy.gamma_adjust(color, brightness=levels)
+        #print("Color=",color)
+        pixels.fill(color.pack())
+        pixels.show()
+        #i+=1
 
 _thread.start_new_thread( status_check, ("StatusCheck Thread", ))
 _thread.start_new_thread( run_lights, ("Running Lights Thread", ))
