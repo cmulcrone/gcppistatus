@@ -12,12 +12,13 @@ import board
 import neopixel
 import adafruit_fancyled.adafruit_fancyled as fancy
 
-NUMPIXELS = 64 #Number of neopixels
+NUMPIXELS = 1 #Number of neopixels
 PI_PIN = board.D18 #Raspberry PI data pin 
-BRIGHTNESS = 1.0 #Neopixel default brightness
+MAXBRIGHTNESS = 1.0 #Neopixel default max brightness
 STATUS_CHECK_DELAY = 10 #Delay between polling for updated status JSON
 SEVERITY_VALUE = 0.0 #Global severity value to be passed between threads
 HEALTHY_COLOR = fancy.CRGB(0.0, 1.0, 0.0) #Color for healthy GCP status
+MEDIUM_COLOR = fancy.CRGB(1.0, 1.0, 1.0) #Color for medium gradient
 UNHEALTHY_COLOR = fancy.CRGB(1.0, 0.0, 0.0) #Color for unhealthy GCP status
 
 class gcpstatus:
@@ -104,6 +105,8 @@ class status:
 
         recency_score = 0
         for status in jsontext:
+            statusdate = dateutil.parser.parse(status['created'])
+
             if status['severity'] in recency_weights:
                 recency_score += recency_weights[status['severity']](1)
         return recency_score
@@ -124,20 +127,22 @@ def status_check( threadName ):
 def run_lights( threadname, ):
     global SEVERITY_VALUE
     global NUMPIXELS
-    global BRIGHTNESS
+    global MAXBRIGHTNESS
     global HEALTHY_COLOR
+    global MEDIUM_COLOR
     global UNHEALTHY_COLOR
 
-    pixels = neopixel.NeoPixel(board.D18, NUMPIXELS, auto_write=False, brightness=BRIGHTNESS)
+    pixels = neopixel.NeoPixel(board.D18, NUMPIXELS, auto_write=False, brightness=MAXBRIGHTNESS)
 
     intensity = round(SEVERITY_VALUE*63)
     print("Intensity=",intensity)
     grad = [ (0.0, HEALTHY_COLOR),
+             (0.5, MEDIUM_COLOR),
              (1.0, UNHEALTHY_COLOR) ]
     palette = fancy.expand_gradient(grad, 64)
-        
-    #TODO: Figure out how to clip this value to allow for dimming
-    MAXIMUMBRIGHT=0.8
+    eul = math.e
+    inveul = 1/math.e
+    brightness = 0.8
     #TODO: Figure out relationship of speed to duty cycle for calculating steps in the loop
     SPEED=1.0
     #i=0
@@ -145,17 +150,22 @@ def run_lights( threadname, ):
         intensity = round(SEVERITY_VALUE*63) 
         color = fancy.palette_lookup(palette, (intensity/100)) 
         seconds = time.time()
-        frequency = 5
-        #blevel = float(i) / 10.0
-        #TODO: See if you can simplify this code? Check spreadsheet
-        #TODO: Add "breathing" mode
-        testblevel = (math.exp(math.sin((seconds % 60)/frequency))-(1-math.e))*(MAXIMUMBRIGHT/(math.e-(1/math.e)))
+        frequency = 0.8
+        floor = 0.1
+        #Breathing pattern
+        testblevel = (math.exp(math.sin((seconds % 60)/frequency))-inveul)*(brightness/(eul-inveul))
+        if testblevel > floor:
+            led_level = testblevel
+        else:
+            led_level = floor
+
         #TODO: Update idle, startup, and internet not found to rotate G Colors
         #TODO: Use seconds % SOMEVALUE to control frequency
+        #Simple sine wave
         #testblevel = (MAXIMUMBRIGHT / 2.0 * (1.0 + math.sin(SPEED * seconds)))/MAXIMUMBRIGHT
-        print("SINE Value=", testblevel)
-        #print("Time since epoch",time.time())
-        levels = (testblevel, testblevel, testblevel)
+        #print("SINE Value=", led_level)
+
+        levels = (led_level, led_level, led_level)
         color = fancy.gamma_adjust(color, brightness=levels)
         #print("Color=",color)
         pixels.fill(color.pack())
