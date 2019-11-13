@@ -12,11 +12,12 @@ import board
 import neopixel
 import adafruit_fancyled.adafruit_fancyled as fancy
 
-NUMPIXELS = 1 #Number of neopixels
+NUMPIXELS = 16 #Number of neopixels
 PI_PIN = board.D18 #Raspberry PI data pin 
 MAXBRIGHTNESS = 1.0 #Neopixel default max brightness
 STATUS_CHECK_DELAY = 10 #Delay between polling for updated status JSON
 SEVERITY_VALUE = 0.0 #Global severity value to be passed between threads
+RECENCY_VALUE = 2.0 #Recency value representing speed of breathing pattern
 HEALTHY_COLOR = fancy.CRGB(0.0, 1.0, 0.0) #Color for healthy GCP status
 MEDIUM_COLOR = fancy.CRGB(1.0, 1.0, 1.0) #Color for medium gradient
 UNHEALTHY_COLOR = fancy.CRGB(1.0, 0.0, 0.0) #Color for unhealthy GCP status
@@ -97,23 +98,30 @@ class status:
         return (severity_score_dict[1] - valmin) / (valmax - valmin)
 
     def calculateRecency(self, jsontext):
-        recency_weights = {
-            'low': lambda x: x * 1,
-            'medium': lambda x: x * 2,
-            'high': lambda x: x * 3,
-        }
+        recency_score = 0.0
 
-        recency_score = 0
-        for status in jsontext:
-            statusdate = dateutil.parser.parse(status['created'])
+        recent = next(iter(jsontext))
+        statusdate = dateutil.parser.parse(recent['created'])
+        now = datetime.datetime.now(datetime.timezone.utc)
+        delta = now - statusdate
 
-            if status['severity'] in recency_weights:
-                recency_score += recency_weights[status['severity']](1)
+        if delta.seconds < 80:
+            recency_score = 0.2
+        elif delta.seconds < 300:
+            recency_score = 0.4
+        elif delta.seconds < 900:
+            recency_score = 0.6
+        elif delta.seconds < 3600:
+            recency_score = 0.8
+        else:
+            recency_score = 1.0
+
         return recency_score
 
 #Thread function that periodically checks the public GCP status JSON 
 def status_check( threadName ):
     global SEVERITY_VALUE
+    global RECENCY_VALUE
     global STATUS_CHECK_DELAY
 
     timer = time.time()
@@ -121,11 +129,14 @@ def status_check( threadName ):
         if time.time() - timer > STATUS_CHECK_DELAY:
             currentStatus = gcpstatus().getStatus()
             SEVERITY_VALUE = currentStatus.severity_value
+            RECENCY_VALUE = currentStatus.recency_value
             print("SevValue=",SEVERITY_VALUE)
+            print("RecValue=",RECENCY_VALUE)
 
 #Thread function to control light behavior based on valus set in status_check
 def run_lights( threadname, ):
     global SEVERITY_VALUE
+    global RECENCY_VALUE
     global NUMPIXELS
     global MAXBRIGHTNESS
     global HEALTHY_COLOR
@@ -137,7 +148,6 @@ def run_lights( threadname, ):
     intensity = round(SEVERITY_VALUE*63)
     print("Intensity=",intensity)
     grad = [ (0.0, HEALTHY_COLOR),
-             (0.5, MEDIUM_COLOR),
              (1.0, UNHEALTHY_COLOR) ]
     palette = fancy.expand_gradient(grad, 64)
     eul = math.e
@@ -150,7 +160,7 @@ def run_lights( threadname, ):
         intensity = round(SEVERITY_VALUE*63) 
         color = fancy.palette_lookup(palette, (intensity/100)) 
         seconds = time.time()
-        frequency = 0.8
+        frequency = RECENCY_VALUE
         floor = 0.1
         #Breathing pattern
         testblevel = (math.exp(math.sin((seconds % 60)/frequency))-inveul)*(brightness/(eul-inveul))
