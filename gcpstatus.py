@@ -181,12 +181,14 @@ def run_lights( threadname, ):
         pixels.fill(color.pack())
         pixels.show()
         #i+=1
+def main():
+    _thread.start_new_thread( status_check, ("StatusCheck Thread", ))
+    _thread.start_new_thread( run_lights, ("Running Lights Thread", ))
 
-_thread.start_new_thread( status_check, ("StatusCheck Thread", ))
-_thread.start_new_thread( run_lights, ("Running Lights Thread", ))
+    while 1:
+        pass
 
-while 1:
-    pass
+main()
 
 #TODO: Add code to only work during business hours (limit bandwidth usage)
 #while True:
