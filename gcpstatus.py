@@ -19,7 +19,7 @@ STATUS_CHECK_DELAY = 10 #Delay between polling for updated status JSON
 SEVERITY_VALUE = -1.0 #Global severity value to be passed between threads
 RECENCY_VALUE = 2.0 #Recency value representing speed of breathing pattern
 HEALTHY_COLOR = fancy.CRGB(0.0, 1.0, 0.0) #Color for healthy GCP status
-MEDIUM_COLOR = fancy.CRGB(1.0, 1.0, 1.0) #Color for medium gradient
+MEDIUM_COLOR = fancy.CRGB(1.0, 0.7, 1.0) #Color for medium gradient
 UNHEALTHY_COLOR = fancy.CRGB(1.0, 0.0, 0.0) #Color for unhealthy GCP status
 WAITING_COLOR = fancy.CRGB(1.0, 0.0, 1.0) #Waiting Connection Color
 
@@ -121,16 +121,12 @@ class status:
 
 #Rotating G-colors called when status connectivity not established
 def loading_lights(pixels):
-    num_pixels = pixels.n
-    #red = fancy.CRGB(1.0, 0.0, 0.0)
-    #blue = fancy.CRGB(0.0, 0.0, 1.0)
-    #green = fancy.CRGB(0.0, 1.0, 0.0)
-    #yellow = fancy.CRGB(1.0, 0.5, 0.0)
     red = (255, 0, 0)
     blue = (0, 0, 255)
     green = (0, 255, 0)
     yellow = (255, 150, 0)
 
+    #Loop through 
     for i in range(pixels.n):
         pixels[i] = red
         pixels[(i + math.floor(pixels.n / 4)) % pixels.n] = blue
@@ -140,6 +136,37 @@ def loading_lights(pixels):
         pixels.show()
         time.sleep(0.1)
 
+#Controls lights that reflect current GCP status
+def status_lights(pixels, palette, eul, inveul, brightness):
+    global RECENCY_VALUE
+    global SEVERITY_VALUE
+    global NUMPIXELS
+    global MAXBRIGHTNESS
+    
+    #Set color and brightness pattern frequency based on current values
+    intensity = round(SEVERITY_VALUE*63)
+    color = fancy.palette_lookup(palette, (intensity/100))
+    seconds = time.time()
+    frequency = RECENCY_VALUE
+    floor = 0.1
+    
+    #Breathing pattern to control brightness
+    testblevel = (math.exp(math.sin((seconds % 60)/frequency))-inveul)*(brightness/(eul-inveul))
+    if testblevel > floor:
+        led_level = testblevel
+    else:
+        led_level = floor
+
+    #TODO: Use seconds % SOMEVALUE to control frequency
+    #Simple sine wave
+    #testblevel = (MAXIMUMBRIGHT / 2.0 * (1.0 + math.sin(SPEED * seconds)))/MAXIMUMBRIGHT
+    #print("SINE Value=", led_level)
+
+    levels = (led_level, led_level, led_level)
+    color = fancy.gamma_adjust(color, brightness=levels)
+    pixels.fill(color.pack())
+    pixels.show()
+
 
 #Thread function that periodically checks the public GCP status JSON 
 def status_check( threadName ):
@@ -147,6 +174,7 @@ def status_check( threadName ):
     global RECENCY_VALUE
     global STATUS_CHECK_DELAY
 
+    #TODO: Add code to only work during business hours (limit bandwidth usage)
     timer = time.time()
     while True:
         if time.time() - timer > STATUS_CHECK_DELAY:
@@ -156,20 +184,19 @@ def status_check( threadName ):
             print("SevValue=",SEVERITY_VALUE)
             print("RecValue=",RECENCY_VALUE)
 
-#Thread function to control light behavior based on valus set in status_check
+#Thread function to control light behavior
 def run_lights( threadname, ):
-    global SEVERITY_VALUE
-    global RECENCY_VALUE
-    global NUMPIXELS
-    global MAXBRIGHTNESS
     global HEALTHY_COLOR
     global MEDIUM_COLOR
     global UNHEALTHY_COLOR
-
+    global SEVERITY_VALUE
+    global NUMPIXELS
+    global MAXBRIGHTNESS
+    
+    #Initialize Neopixels
     pixels = neopixel.NeoPixel(board.D18, NUMPIXELS, auto_write=False, brightness=MAXBRIGHTNESS)
 
-    intensity = round(SEVERITY_VALUE*63)
-    print("Intensity=",intensity)
+    #Set up gradient pallete and constant values
     grad = [ (0.0, HEALTHY_COLOR),
              (1.0, UNHEALTHY_COLOR) ]
     palette = fancy.expand_gradient(grad, 64)
@@ -177,36 +204,16 @@ def run_lights( threadname, ):
     inveul = 1/math.e
     brightness = 0.8
     #TODO: Figure out relationship of speed to duty cycle for calculating steps in the loop
-    SPEED=1.0
-    #i=0
+    #SPEED=1.0
+
+    #Run loop
     while True:
         if SEVERITY_VALUE == -1.0:
             loading_lights(pixels)
         else:
-            intensity = round(SEVERITY_VALUE*63)
-            color = fancy.palette_lookup(palette, (intensity/100))
-            seconds = time.time()
-            frequency = RECENCY_VALUE
-            floor = 0.1
-            #Breathing pattern
-            testblevel = (math.exp(math.sin((seconds % 60)/frequency))-inveul)*(brightness/(eul-inveul))
-            if testblevel > floor:
-                led_level = testblevel
-            else:
-                led_level = floor
+            status_lights(pixels, palette, eul, inveul, brightness)
 
-            #TODO: Update idle, startup, and internet not found to rotate G Colors
-            #TODO: Use seconds % SOMEVALUE to control frequency
-            #Simple sine wave
-            #testblevel = (MAXIMUMBRIGHT / 2.0 * (1.0 + math.sin(SPEED * seconds)))/MAXIMUMBRIGHT
-            #print("SINE Value=", led_level)
-
-            levels = (led_level, led_level, led_level)
-            color = fancy.gamma_adjust(color, brightness=levels)
-            #print("Color=",color)
-            pixels.fill(color.pack())
-            pixels.show()
-
+#Main function, kicks off status check and light control threads
 def main():
     _thread.start_new_thread( status_check, ("StatusCheck Thread", ))
     _thread.start_new_thread( run_lights, ("Running Lights Thread", ))
@@ -215,12 +222,3 @@ def main():
         pass
 
 main()
-
-#TODO: Add code to only work during business hours (limit bandwidth usage)
-#while True:
-    # Update status once every 5 secs
-#    if time.time() - timer > 5:
-#        print(currentStatus.severity_value)
-#        timer = time.time()
-#        pixels[m] = (255,0,0)
-#        m += 1
