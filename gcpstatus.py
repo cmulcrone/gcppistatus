@@ -16,11 +16,12 @@ NUMPIXELS = 16 #Number of neopixels
 PI_PIN = board.D18 #Raspberry PI data pin 
 MAXBRIGHTNESS = 1.0 #Neopixel default max brightness
 STATUS_CHECK_DELAY = 10 #Delay between polling for updated status JSON
-SEVERITY_VALUE = 0.0 #Global severity value to be passed between threads
+SEVERITY_VALUE = -1.0 #Global severity value to be passed between threads
 RECENCY_VALUE = 2.0 #Recency value representing speed of breathing pattern
 HEALTHY_COLOR = fancy.CRGB(0.0, 1.0, 0.0) #Color for healthy GCP status
 MEDIUM_COLOR = fancy.CRGB(1.0, 1.0, 1.0) #Color for medium gradient
 UNHEALTHY_COLOR = fancy.CRGB(1.0, 0.0, 0.0) #Color for unhealthy GCP status
+WAITING_COLOR = fancy.CRGB(1.0, 0.0, 1.0) #Waiting Connection Color
 
 class gcpstatus:
 
@@ -118,6 +119,28 @@ class status:
 
         return recency_score
 
+#Rotating G-colors called when status connectivity not established
+def loading_lights(pixels):
+    num_pixels = pixels.n
+    #red = fancy.CRGB(1.0, 0.0, 0.0)
+    #blue = fancy.CRGB(0.0, 0.0, 1.0)
+    #green = fancy.CRGB(0.0, 1.0, 0.0)
+    #yellow = fancy.CRGB(1.0, 0.5, 0.0)
+    red = (255, 0, 0)
+    blue = (0, 0, 255)
+    green = (0, 255, 0)
+    yellow = (255, 150, 0)
+
+    for i in range(pixels.n):
+        pixels[i] = red
+        pixels[(i + math.floor(pixels.n / 4)) % pixels.n] = blue
+        pixels[(i + math.floor(pixels.n / 4 * 2)) % pixels.n] = green
+        pixels[(i + math.floor(pixels.n / 4 * 3)) % pixels.n] = yellow
+
+        pixels.show()
+        time.sleep(0.1)
+
+
 #Thread function that periodically checks the public GCP status JSON 
 def status_check( threadName ):
     global SEVERITY_VALUE
@@ -157,30 +180,33 @@ def run_lights( threadname, ):
     SPEED=1.0
     #i=0
     while True:
-        intensity = round(SEVERITY_VALUE*63) 
-        color = fancy.palette_lookup(palette, (intensity/100)) 
-        seconds = time.time()
-        frequency = RECENCY_VALUE
-        floor = 0.1
-        #Breathing pattern
-        testblevel = (math.exp(math.sin((seconds % 60)/frequency))-inveul)*(brightness/(eul-inveul))
-        if testblevel > floor:
-            led_level = testblevel
+        if SEVERITY_VALUE == -1.0:
+            loading_lights(pixels)
         else:
-            led_level = floor
+            intensity = round(SEVERITY_VALUE*63)
+            color = fancy.palette_lookup(palette, (intensity/100))
+            seconds = time.time()
+            frequency = RECENCY_VALUE
+            floor = 0.1
+            #Breathing pattern
+            testblevel = (math.exp(math.sin((seconds % 60)/frequency))-inveul)*(brightness/(eul-inveul))
+            if testblevel > floor:
+                led_level = testblevel
+            else:
+                led_level = floor
 
-        #TODO: Update idle, startup, and internet not found to rotate G Colors
-        #TODO: Use seconds % SOMEVALUE to control frequency
-        #Simple sine wave
-        #testblevel = (MAXIMUMBRIGHT / 2.0 * (1.0 + math.sin(SPEED * seconds)))/MAXIMUMBRIGHT
-        #print("SINE Value=", led_level)
+            #TODO: Update idle, startup, and internet not found to rotate G Colors
+            #TODO: Use seconds % SOMEVALUE to control frequency
+            #Simple sine wave
+            #testblevel = (MAXIMUMBRIGHT / 2.0 * (1.0 + math.sin(SPEED * seconds)))/MAXIMUMBRIGHT
+            #print("SINE Value=", led_level)
 
-        levels = (led_level, led_level, led_level)
-        color = fancy.gamma_adjust(color, brightness=levels)
-        #print("Color=",color)
-        pixels.fill(color.pack())
-        pixels.show()
-        #i+=1
+            levels = (led_level, led_level, led_level)
+            color = fancy.gamma_adjust(color, brightness=levels)
+            #print("Color=",color)
+            pixels.fill(color.pack())
+            pixels.show()
+
 def main():
     _thread.start_new_thread( status_check, ("StatusCheck Thread", ))
     _thread.start_new_thread( run_lights, ("Running Lights Thread", ))
