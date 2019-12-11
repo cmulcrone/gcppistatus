@@ -13,7 +13,7 @@ import neopixel
 import adafruit_fancyled.adafruit_fancyled as fancy
 
 NUMPIXELS = 16 #Number of neopixels
-PI_PIN = board.D18 #Raspberry PI data pin 
+PI_PIN = board.D18 #Raspberry PI data pin
 MAXBRIGHTNESS = 1.0 #Neopixel default max brightness
 STATUS_CHECK_DELAY = 10 #Delay between polling for updated status JSON
 SEVERITY_VALUE = -1.0 #Global severity value to be passed between threads
@@ -50,13 +50,15 @@ class status:
             response = requests.get(self.url)
             jsontext = response.json()
         except ValueError:
-            return 'Error Decoding JSON'
+            pass
+            #return 'Error Decoding JSON'
             # TODO - set error state for Neopixel notification
         except requests.exceptions.ConnectionError:
             return "ConnectionError"
             # TODO - set error state for Neopixel notification
         except requests.exceptions.HTTPError:
-            return False
+            pass
+            #return False
             # TODO - set error state for Neopixel notification
         return jsontext
 
@@ -68,6 +70,10 @@ class status:
             'medium': lambda x: x * 2,
             'high': lambda x: x * 3,
         }
+
+        #Exit with no severity code if jsontext = ConnectionError
+        if jsontext == 'ConnectionError':
+            return -1.0
 
         #Date time for time period of measurements
         margin = datetime.timedelta(days = self.check_period)
@@ -100,6 +106,9 @@ class status:
 
     def calculateRecency(self, jsontext):
         recency_score = 0.0
+
+        if jsontext == 'ConnectionError':
+            return -1.0
 
         recent = next(iter(jsontext))
         statusdate = dateutil.parser.parse(recent['created'])
@@ -181,6 +190,7 @@ def status_check( threadName ):
             currentStatus = gcpstatus().getStatus()
             SEVERITY_VALUE = currentStatus.severity_value
             RECENCY_VALUE = currentStatus.recency_value
+            timer = time.time()
             print("SevValue=",SEVERITY_VALUE)
             print("RecValue=",RECENCY_VALUE)
 
@@ -192,7 +202,7 @@ def run_lights( threadname, ):
     global SEVERITY_VALUE
     global NUMPIXELS
     global MAXBRIGHTNESS
-    
+
     #Initialize Neopixels
     pixels = neopixel.NeoPixel(board.D18, NUMPIXELS, auto_write=False, brightness=MAXBRIGHTNESS)
 
