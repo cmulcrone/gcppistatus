@@ -236,11 +236,11 @@ def read_configs():
     config.read('status.ini')
     
     STATUS_CHECK_DELAY = float(config['DEFAULT']['STATUS_CHECK_DELAY'])
-    NUMPIXELS = float(config['DEFAULT']['NUMPIXELS'])
+    NUMPIXELS = int(config['DEFAULT']['NUMPIXELS'], 0)
     MAXBRIGHTNESS = float(config['DEFAULT']['MAXBRIGHTNESS'])
-    HEALTHY_COLOR = fancy.unpack(config['DEFAULT']['HEALTHY_COLOR'])
-    MEDIUM_COLOR = fancy.unpack(config['DEFAULT']['MEDIUM_COLOR'])
-    UNHEALTHY_COLOR = fancy.unpack(config['DEFAULT']['UNHEALTHY_COLOR'])
+    HEALTHY_COLOR = fancy.unpack(int(config['DEFAULT']['HEALTHY_COLOR'], 0))
+    MEDIUM_COLOR = fancy.unpack(int(config['DEFAULT']['MEDIUM_COLOR'], 0))
+    UNHEALTHY_COLOR = fancy.unpack(int(config['DEFAULT']['UNHEALTHY_COLOR'], 0))
 
 
 #Main function, kicks off status check and light control threads
