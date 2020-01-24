@@ -8,6 +8,7 @@ import time
 import datetime
 import dateutil.parser
 import _thread
+import configparser
 import board
 import neopixel
 import adafruit_fancyled.adafruit_fancyled as fancy
@@ -21,7 +22,6 @@ RECENCY_VALUE = 2.0 #Recency value representing speed of breathing pattern
 HEALTHY_COLOR = fancy.CRGB(0.0, 1.0, 0.0) #Color for healthy GCP status
 MEDIUM_COLOR = fancy.CRGB(1.0, 0.7, 1.0) #Color for medium gradient
 UNHEALTHY_COLOR = fancy.CRGB(1.0, 0.0, 0.0) #Color for unhealthy GCP status
-WAITING_COLOR = fancy.CRGB(1.0, 0.0, 1.0) #Waiting Connection Color
 
 class gcpstatus:
 
@@ -223,8 +223,29 @@ def run_lights( threadname, ):
         else:
             status_lights(pixels, palette, eul, inveul, brightness)
 
+#Read config values from ini file and use to set global values
+def read_configs():
+    global STATUS_CHECK_DELAY
+    global NUMPIXELS
+    global MAXBRIGHTNESS
+    global HEALTHY_COLOR
+    global MEDIUM_COLOR
+    global UNHEALTHY_COLOR
+
+    config = configparser.ConfigParser()
+    config.read('status.ini')
+    
+    STATUS_CHECK_DELAY = float(config['DEFAULT']['STATUS_CHECK_DELAY'])
+    NUMPIXELS = float(config['DEFAULT']['NUMPIXELS'])
+    MAXBRIGHTNESS = float(config['DEFAULT']['MAXBRIGHTNESS'])
+    HEALTHY_COLOR = fancy.unpack(config['DEFAULT']['HEALTHY_COLOR'])
+    MEDIUM_COLOR = fancy.unpack(config['DEFAULT']['MEDIUM_COLOR'])
+    UNHEALTHY_COLOR = fancy.unpack(config['DEFAULT']['UNHEALTHY_COLOR'])
+
+
 #Main function, kicks off status check and light control threads
 def main():
+    read_configs()
     _thread.start_new_thread( status_check, ("StatusCheck Thread", ))
     _thread.start_new_thread( run_lights, ("Running Lights Thread", ))
 
