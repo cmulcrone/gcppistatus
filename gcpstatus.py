@@ -145,6 +145,19 @@ def loading_lights(pixels):
         pixels.show()
         time.sleep(0.1)
 
+
+#Sparkle Pattern
+def sparkle(pixels):
+    global NUMPIXELS
+
+    sparkle_color = (255, 255, 255)
+
+    pixel = random.randrange(NUMPIXELS)
+    pixels[pixel] = sparkle_color
+    pixels.show()
+    time.sleep(0.05)
+    pixels[pixel] = (0, 0, 0)
+
 #Controls lights that reflect current GCP status
 def status_lights(pixels, palette, eul, inveul, brightness):
     global RECENCY_VALUE
@@ -234,7 +247,7 @@ def read_configs():
 
     config = configparser.ConfigParser()
     config.read('status.ini')
-    
+
     STATUS_CHECK_DELAY = float(config['DEFAULT']['STATUS_CHECK_DELAY'])
     NUMPIXELS = int(config['DEFAULT']['NUMPIXELS'], 0)
     MAXBRIGHTNESS = float(config['DEFAULT']['MAXBRIGHTNESS'])
