@@ -246,8 +246,8 @@ def read_configs():
     global UNHEALTHY_COLOR
 
     config = configparser.ConfigParser()
-    config.read('status.ini')
-
+    config.read('/home/pi/development/gcppistatus/status.ini')
+    
     STATUS_CHECK_DELAY = float(config['DEFAULT']['STATUS_CHECK_DELAY'])
     NUMPIXELS = int(config['DEFAULT']['NUMPIXELS'], 0)
     MAXBRIGHTNESS = float(config['DEFAULT']['MAXBRIGHTNESS'])
