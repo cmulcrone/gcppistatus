@@ -22,6 +22,9 @@ RECENCY_VALUE = 2.0 #Recency value representing speed of breathing pattern
 HEALTHY_COLOR = fancy.CRGB(0.0, 1.0, 0.0) #Color for healthy GCP status
 MEDIUM_COLOR = fancy.CRGB(1.0, 0.7, 1.0) #Color for medium gradient
 UNHEALTHY_COLOR = fancy.CRGB(1.0, 0.0, 0.0) #Color for unhealthy GCP status
+CURRENT_INCIDENT = False
+WAKE_TIME = '07:45:00'
+SLEEP_TIME = '17:00:00'
 
 class gcpstatus:
 
@@ -64,12 +67,17 @@ class status:
 
     #Returns relative value of service health in the past 30 days compared to the past year
     def calculateSeverity(self, jsontext):
+        global CURRENT_INCIDENT
+
         #Lambda for weighting severity of individual incidents
         severity_weights = {
             'low': lambda x: x * 1,
             'medium': lambda x: x * 2,
             'high': lambda x: x * 3,
         }
+
+        #Reset current incident flag
+        CURRENT_INCIDENT = False
 
         #Exit with no severity code if jsontext = ConnectionError
         if jsontext == 'ConnectionError':
@@ -87,6 +95,9 @@ class status:
         #While there are still status updates in the json, calculate and tally severity score by period
         for status in jsontext:
             statusdate = dateutil.parser.parse(status['begin'])
+
+            if not status['end']:
+                CURRENT_INCIDENT = True
 
             #If the begin date is older than current period, dump current severity score into dict
             #and increment counter.  Otherwise, add severity score to current period total
@@ -244,6 +255,8 @@ def read_configs():
     global HEALTHY_COLOR
     global MEDIUM_COLOR
     global UNHEALTHY_COLOR
+    global WAKE_TIME
+    global SLEEP_TIME
 
     config = configparser.ConfigParser()
     config.read('/home/pi/development/gcppistatus/status.ini')
@@ -254,7 +267,10 @@ def read_configs():
     HEALTHY_COLOR = fancy.unpack(int(config['DEFAULT']['HEALTHY_COLOR'], 0))
     MEDIUM_COLOR = fancy.unpack(int(config['DEFAULT']['MEDIUM_COLOR'], 0))
     UNHEALTHY_COLOR = fancy.unpack(int(config['DEFAULT']['UNHEALTHY_COLOR'], 0))
+    WAKE_TIME = config['DEFAULT']['WAKE_TIME']
+    SLEEP_TIME = config['DEFAULT']['SLEEP_TIME']
 
+    
 
 #Main function, kicks off status check and light control threads
 def main():
