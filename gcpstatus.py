@@ -158,6 +158,7 @@ def loading_lights(pixels):
 
 
 #Sparkle Pattern
+#Adapted from tweaking4all.com/hardware/arduino/arduino-led-strip-effects/
 def sparkle(pixels):
     global NUMPIXELS
 
@@ -169,8 +170,31 @@ def sparkle(pixels):
     time.sleep(0.05)
     pixels[pixel] = (0, 0, 0)
 
+#Pattern for an active incident
+#Adapted from tweaking4all.com/hardware/arduino/arduino-led-strip-effects/
+def active_incident(pixels):
+    global NUMPIXELS
+
+    barsize = round(NUMPIXELS / 4)
+    barcolor = (255, 0, 0)
+    dimbarcolor = (25, 0, 0)
+
+    for i in range(pixels.n - barsize - 2):
+        pixels.fill((0, 0, 0))
+        pixels[i] = dimbarcolor
+
+        for j in range(barsize):
+            pixels[i+j] = barcolor
+
+        pixels[i + barsize + 1] = dimbarcolor
+        pixels.show()
+        time.sleep(0.1)
+
+    time.sleep(3)
+
+
 #Controls lights that reflect current GCP status
-def status_lights(pixels, palette, eul, inveul, brightness):
+def breathe_lights(pixels, palette, eul, inveul, brightness):
     global RECENCY_VALUE
     global SEVERITY_VALUE
     global NUMPIXELS
@@ -245,7 +269,8 @@ def run_lights( threadname, ):
         if SEVERITY_VALUE == -1.0:
             loading_lights(pixels)
         else:
-            status_lights(pixels, palette, eul, inveul, brightness)
+            #breathe_lights(pixels, palette, eul, inveul, brightness)
+            active_incident(pixels)
 
 #Read config values from ini file and use to set global values
 def read_configs():
