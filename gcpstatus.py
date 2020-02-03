@@ -13,18 +13,20 @@ import board
 import neopixel
 import adafruit_fancyled.adafruit_fancyled as fancy
 
-NUMPIXELS = 16 #Number of neopixels
-PI_PIN = board.D18 #Raspberry PI data pin
-MAXBRIGHTNESS = 1.0 #Neopixel default max brightness
-STATUS_CHECK_DELAY = 10 #Delay between polling for updated status JSON
-SEVERITY_VALUE = -1.0 #Global severity value to be passed between threads
-RECENCY_VALUE = 2.0 #Recency value representing speed of breathing pattern
-HEALTHY_COLOR = fancy.CRGB(0.0, 1.0, 0.0) #Color for healthy GCP status
-MEDIUM_COLOR = fancy.CRGB(1.0, 0.7, 1.0) #Color for medium gradient
-UNHEALTHY_COLOR = fancy.CRGB(1.0, 0.0, 0.0) #Color for unhealthy GCP status
-CURRENT_INCIDENT = False
-WAKE_TIME = '07:45:00'
-SLEEP_TIME = '17:00:00'
+STATUS_VARS = {
+        'NUMPIXELS': 16, #Number of neopixels
+        'PI_PIN': board.D18, #Raspberry PI data pin
+        'MAXBRIGHTNESS': 1.0, #Neopixel default max brightness
+        'STATUS_CHECK_DELAY': 10, #Delay between polling for updated status JSON
+        'SEVERITY_VALUE': -1.0, #Global severity value to be passed between threads
+        'RECENCY_VALUE': 2.0, #Recency value representing speed of breathing pattern
+        'HEALTHY_COLOR': fancy.CRGB(0.0, 1.0, 0.0), #Color for healthy GCP status
+        'MEDIUM_COLOR': fancy.CRGB(1.0, 0.7, 1.0), #Color for medium gradient
+        'UNHEALTHY_COLOR': fancy.CRGB(1.0, 0.0, 0.0), #Color for unhealthy GCP status
+        'CURRENT_INCIDENT': False,
+        'WAKE_TIME': '07:45:00',
+        'SLEEP_TIME': '17:00:00',
+}
 
 class gcpstatus:
 
@@ -67,8 +69,6 @@ class status:
 
     #Returns relative value of service health in the past 30 days compared to the past year
     def calculateSeverity(self, jsontext):
-        global CURRENT_INCIDENT
-
         #Lambda for weighting severity of individual incidents
         severity_weights = {
             'low': lambda x: x * 1,
@@ -77,7 +77,7 @@ class status:
         }
 
         #Reset current incident flag
-        CURRENT_INCIDENT = False
+        STATUS_VARS['CURRENT_INCIDENT'] = False
 
         #Exit with no severity code if jsontext = ConnectionError
         if jsontext == 'ConnectionError':
@@ -97,7 +97,7 @@ class status:
             statusdate = dateutil.parser.parse(status['begin'])
 
             if not status['end']:
-                CURRENT_INCIDENT = True
+                STATUS_VARS['CURRENT_INCIDENT'] = True
 
             #If the begin date is older than current period, dump current severity score into dict
             #and increment counter.  Otherwise, add severity score to current period total
@@ -160,11 +160,10 @@ def loading_lights(pixels):
 #Sparkle Pattern
 #Adapted from tweaking4all.com/hardware/arduino/arduino-led-strip-effects/
 def sparkle(pixels):
-    global NUMPIXELS
-
+    
     sparkle_color = (255, 255, 255)
 
-    pixel = random.randrange(NUMPIXELS)
+    pixel = random.randrange(STATUS_VARS['NUMPIXELS'])
     pixels[pixel] = sparkle_color
     pixels.show()
     time.sleep(0.05)
@@ -173,9 +172,8 @@ def sparkle(pixels):
 #Pattern for an active incident
 #Adapted from tweaking4all.com/hardware/arduino/arduino-led-strip-effects/
 def active_incident(pixels):
-    global NUMPIXELS
 
-    barsize = round(NUMPIXELS / 4)
+    barsize = round(STATUS_VARS['NUMPIXELS'] / 4)
     barcolor = (255, 0, 0)
     dimbarcolor = (25, 0, 0)
 
@@ -194,17 +192,12 @@ def active_incident(pixels):
 
 
 #Controls lights that reflect current GCP status
-def breathe_lights(pixels, palette, eul, inveul, brightness):
-    global RECENCY_VALUE
-    global SEVERITY_VALUE
-    global NUMPIXELS
-    global MAXBRIGHTNESS
-    
+def breathe_lights(pixels, palette, eul, inveul, brightness): 
     #Set color and brightness pattern frequency based on current values
-    intensity = round(SEVERITY_VALUE*63)
+    intensity = round(STATUS_VARS['SEVERITY_VALUE']*63)
     color = fancy.palette_lookup(palette, (intensity/100))
     seconds = time.time()
-    frequency = RECENCY_VALUE
+    frequency = STATUS_VARS['RECENCY_VALUE']
     floor = 0.1
     
     #Breathing pattern to control brightness
@@ -227,36 +220,25 @@ def breathe_lights(pixels, palette, eul, inveul, brightness):
 
 #Thread function that periodically checks the public GCP status JSON 
 def status_check( threadName ):
-    global SEVERITY_VALUE
-    global RECENCY_VALUE
-    global STATUS_CHECK_DELAY
-
     #TODO: Add code to only work during business hours (limit bandwidth usage)
     timer = time.time()
     while True:
-        if time.time() - timer > STATUS_CHECK_DELAY:
+        if time.time() - timer > STATUS_VARS['STATUS_CHECK_DELAY']:
             currentStatus = gcpstatus().getStatus()
-            SEVERITY_VALUE = currentStatus.severity_value
-            RECENCY_VALUE = currentStatus.recency_value
+            STATUS_VARS['SEVERITY_VALUE'] = currentStatus.severity_value
+            STATUS_VARS['RECENCY_VALUE'] = currentStatus.recency_value
             timer = time.time()
-            print("SevValue=",SEVERITY_VALUE)
-            print("RecValue=",RECENCY_VALUE)
+            print("SevValue=",STATUS_VARS['SEVERITY_VALUE'])
+            print("RecValue=",STATUS_VARS['RECENCY_VALUE'])
 
 #Thread function to control light behavior
 def run_lights( threadname, ):
-    global HEALTHY_COLOR
-    global MEDIUM_COLOR
-    global UNHEALTHY_COLOR
-    global SEVERITY_VALUE
-    global NUMPIXELS
-    global MAXBRIGHTNESS
-
     #Initialize Neopixels
-    pixels = neopixel.NeoPixel(board.D18, NUMPIXELS, auto_write=False, brightness=MAXBRIGHTNESS)
+    pixels = neopixel.NeoPixel(board.D18, STATUS_VARS['NUMPIXELS'], auto_write=False, brightness=STATUS_VARS['MAXBRIGHTNESS'])
 
     #Set up gradient pallete and constant values
-    grad = [ (0.0, HEALTHY_COLOR),
-             (1.0, UNHEALTHY_COLOR) ]
+    grad = [ (0.0, STATUS_VARS['HEALTHY_COLOR'] ),
+             (1.0, STATUS_VARS['UNHEALTHY_COLOR'] ) ]
     palette = fancy.expand_gradient(grad, 64)
     eul = math.e
     inveul = 1/math.e
@@ -266,7 +248,7 @@ def run_lights( threadname, ):
 
     #Run loop
     while True:
-        if SEVERITY_VALUE == -1.0:
+        if STATUS_VARS['SEVERITY_VALUE'] == -1.0:
             loading_lights(pixels)
         else:
             #breathe_lights(pixels, palette, eul, inveul, brightness)
@@ -274,26 +256,17 @@ def run_lights( threadname, ):
 
 #Read config values from ini file and use to set global values
 def read_configs():
-    global STATUS_CHECK_DELAY
-    global NUMPIXELS
-    global MAXBRIGHTNESS
-    global HEALTHY_COLOR
-    global MEDIUM_COLOR
-    global UNHEALTHY_COLOR
-    global WAKE_TIME
-    global SLEEP_TIME
-
     config = configparser.ConfigParser()
     config.read('/home/pi/development/gcppistatus/status.ini')
     
-    STATUS_CHECK_DELAY = float(config['DEFAULT']['STATUS_CHECK_DELAY'])
-    NUMPIXELS = int(config['DEFAULT']['NUMPIXELS'], 0)
-    MAXBRIGHTNESS = float(config['DEFAULT']['MAXBRIGHTNESS'])
-    HEALTHY_COLOR = fancy.unpack(int(config['DEFAULT']['HEALTHY_COLOR'], 0))
-    MEDIUM_COLOR = fancy.unpack(int(config['DEFAULT']['MEDIUM_COLOR'], 0))
-    UNHEALTHY_COLOR = fancy.unpack(int(config['DEFAULT']['UNHEALTHY_COLOR'], 0))
-    WAKE_TIME = config['DEFAULT']['WAKE_TIME']
-    SLEEP_TIME = config['DEFAULT']['SLEEP_TIME']
+    STATUS_VARS['STATUS_CHECK_DELAY'] = float(config['DEFAULT']['STATUS_CHECK_DELAY'])
+    STATUS_VARS['NUMPIXELS'] = int(config['DEFAULT']['NUMPIXELS'], 0)
+    STATUS_VARS['MAXBRIGHTNESS'] = float(config['DEFAULT']['MAXBRIGHTNESS'])
+    STATUS_VARS['HEALTHY_COLOR'] = fancy.unpack(int(config['DEFAULT']['HEALTHY_COLOR'], 0))
+    STATUS_VARS['MEDIUM_COLOR'] = fancy.unpack(int(config['DEFAULT']['MEDIUM_COLOR'], 0))
+    STATUS_VARS['UNHEALTHY_COLOR'] = fancy.unpack(int(config['DEFAULT']['UNHEALTHY_COLOR'], 0))
+    STATUS_VARS['WAKE_TIME'] = config['DEFAULT']['WAKE_TIME']
+    STATUS_VARS['SLEEP_TIME']= config['DEFAULT']['SLEEP_TIME']
 
     
 
