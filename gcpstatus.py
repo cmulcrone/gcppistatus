@@ -177,18 +177,18 @@ def active_incident(pixels):
     barcolor = (255, 0, 0)
     dimbarcolor = (25, 0, 0)
 
-    for i in range(pixels.n - barsize - 2):
+    for i in range(pixels.n - barsize):
         pixels.fill((0, 0, 0))
         pixels[i] = dimbarcolor
 
         for j in range(barsize):
             pixels[i+j] = barcolor
 
-        pixels[i + barsize + 1] = dimbarcolor
+        #pixels[i + barsize + 1] = dimbarcolor
         pixels.show()
-        time.sleep(0.1)
+        time.sleep(0.01)
 
-    time.sleep(3)
+    time.sleep(1)
 
 
 #Controls lights that reflect current GCP status
@@ -250,9 +250,11 @@ def run_lights( threadname, ):
     while True:
         if STATUS_VARS['SEVERITY_VALUE'] == -1.0:
             loading_lights(pixels)
-        else:
-            #breathe_lights(pixels, palette, eul, inveul, brightness)
+        elif STATUS_VARS['CURRENT_INCIDENT']:
             active_incident(pixels)
+        else:
+            breathe_lights(pixels, palette, eul, inveul, brightness)
+
 
 #Read config values from ini file and use to set global values
 def read_configs():
