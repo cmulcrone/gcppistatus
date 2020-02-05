@@ -171,7 +171,7 @@ def sparkle(pixels):
 
 #Pattern for an active incident
 #Adapted from tweaking4all.com/hardware/arduino/arduino-led-strip-effects/
-def active_incident(pixels):
+def active_incident(pixels, eul, inveul, brightness):
 
     barsize = round(STATUS_VARS['NUMPIXELS'] / 4)
     barcolor = (255, 0, 0)
@@ -187,9 +187,18 @@ def active_incident(pixels):
         #pixels[i + barsize + 1] = dimbarcolor
         pixels.show()
         time.sleep(0.01)
+    
+    #Set up gradient pallete and constant values
+    grad = [ (0.0, STATUS_VARS['UNHEALTHY_COLOR'] ),
+             (1.0, STATUS_VARS['UNHEALTHY_COLOR'] ) ]
+    palette = fancy.expand_gradient(grad, 64)
+    
+    whiletimeout = time.time() + 20
 
-    time.sleep(1)
-
+    while True:
+        if time.time() > whiletimeout: 
+            break
+        breathe_lights(pixels, palette, eul, inveul, brightness)
 
 #Controls lights that reflect current GCP status
 def breathe_lights(pixels, palette, eul, inveul, brightness): 
@@ -251,7 +260,7 @@ def run_lights( threadname, ):
         if STATUS_VARS['SEVERITY_VALUE'] == -1.0:
             loading_lights(pixels)
         elif STATUS_VARS['CURRENT_INCIDENT']:
-            active_incident(pixels)
+            active_incident(pixels, eul, inveul, brightness)
         else:
             breathe_lights(pixels, palette, eul, inveul, brightness)
 
