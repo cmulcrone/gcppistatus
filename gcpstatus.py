@@ -177,16 +177,17 @@ def active_incident(pixels, eul, inveul, brightness):
     barcolor = (255, 0, 0)
     dimbarcolor = (25, 0, 0)
 
-    for i in range(pixels.n - barsize):
-        pixels.fill((0, 0, 0))
-        pixels[i] = dimbarcolor
+    for k in range(5):
+        for i in range(pixels.n - barsize):
+            pixels.fill((0, 0, 0))
+            pixels[i] = dimbarcolor
 
-        for j in range(barsize):
-            pixels[i+j] = barcolor
+            for j in range(barsize):
+                pixels[i+j] = barcolor
 
-        #pixels[i + barsize + 1] = dimbarcolor
-        pixels.show()
-        time.sleep(0.01)
+            #pixels[i + barsize + 1] = dimbarcolor
+            pixels.show()
+            time.sleep(0.01)
     
     #Set up gradient pallete and constant values
     grad = [ (0.0, STATUS_VARS['UNHEALTHY_COLOR'] ),
@@ -262,6 +263,7 @@ def run_lights( threadname, ):
         elif STATUS_VARS['CURRENT_INCIDENT']:
             active_incident(pixels, eul, inveul, brightness)
         else:
+            #active_incident(pixels, eul, inveul, brightness)
             breathe_lights(pixels, palette, eul, inveul, brightness)
 
 
