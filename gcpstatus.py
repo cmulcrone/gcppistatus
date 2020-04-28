@@ -1,4 +1,4 @@
-#Source List
+#intSource List
 #http://bsou.io/posts/color-gradients-with-python
 
 import requests
@@ -17,7 +17,7 @@ STATUS_VARS = {
         'NUMPIXELS': 16, #Number of neopixels
         'PI_PIN': board.D18, #Raspberry PI data pin
         'MAXBRIGHTNESS': 1.0, #Neopixel default max brightness
-        'STATUS_CHECK_DELAY': 10, #Delay between polling for updated status JSON
+        'STATUS_CHECK_DELAY': 30, #Delay between polling for updated status JSON
         'SEVERITY_VALUE': -1.0, #Global severity value to be passed between threads
         'RECENCY_VALUE': 2.0, #Recency value representing speed of breathing pattern
         'HEALTHY_COLOR': fancy.CRGB(0.0, 1.0, 0.0), #Color for healthy GCP status
@@ -205,7 +205,8 @@ def active_incident(pixels, eul, inveul, brightness):
 def breathe_lights(pixels, palette, eul, inveul, brightness): 
     #Set color and brightness pattern frequency based on current values
     intensity = round(STATUS_VARS['SEVERITY_VALUE']*63)
-    color = fancy.palette_lookup(palette, (intensity/100))
+    color = fancy.palette_lookup(palette, intensity)
+
     seconds = time.time()
     frequency = STATUS_VARS['RECENCY_VALUE']
     floor = 0.1
@@ -230,10 +231,11 @@ def breathe_lights(pixels, palette, eul, inveul, brightness):
 
 #Thread function that periodically checks the public GCP status JSON 
 def status_check( threadName ):
-    #TODO: Add code to only work during business hours (limit bandwidth usage)
     timer = time.time()
     while True:
-        if time.time() - timer > STATUS_VARS['STATUS_CHECK_DELAY']:
+        onStatus = shouldIBeOn()
+
+        if time.time() - timer > STATUS_VARS['STATUS_CHECK_DELAY'] and onStatus:
             currentStatus = gcpstatus().getStatus()
             STATUS_VARS['SEVERITY_VALUE'] = currentStatus.severity_value
             STATUS_VARS['RECENCY_VALUE'] = currentStatus.recency_value
@@ -250,6 +252,7 @@ def run_lights( threadname, ):
     grad = [ (0.0, STATUS_VARS['HEALTHY_COLOR'] ),
              (1.0, STATUS_VARS['UNHEALTHY_COLOR'] ) ]
     palette = fancy.expand_gradient(grad, 64)
+    #print(fancy.palette_lookup(palette, 64))
     eul = math.e
     inveul = 1/math.e
     brightness = 0.8
@@ -258,20 +261,40 @@ def run_lights( threadname, ):
 
     #Run loop
     while True:
-        if STATUS_VARS['SEVERITY_VALUE'] == -1.0:
-            loading_lights(pixels)
-        elif STATUS_VARS['CURRENT_INCIDENT']:
-            active_incident(pixels, eul, inveul, brightness)
-        else:
-            #active_incident(pixels, eul, inveul, brightness)
-            breathe_lights(pixels, palette, eul, inveul, brightness)
+        onStatus = shouldIBeOn()
 
+        if not onStatus:
+            pixels.fill((0,0,0))
+            pixels.show()
+        elif onStatus:
+            if STATUS_VARS['SEVERITY_VALUE'] == -1.0:
+                loading_lights(pixels)
+            elif STATUS_VARS['CURRENT_INCIDENT']:
+                active_incident(pixels, eul, inveul, brightness)
+            else:
+                #active_incident(pixels, eul, inveul, brightness)
+                breathe_lights(pixels, palette, eul, inveul, brightness)
+
+
+#Determine if the indicator should be active based on wake and sleep times
+def shouldIBeOn():
+    now = datetime.datetime.now()
+    waketimesplit = STATUS_VARS['WAKE_TIME'].split(':')
+    sleeptimesplit = STATUS_VARS['SLEEP_TIME'].split(':')
+
+    waketime = now.replace(hour = int(waketimesplit[0]), minute = int(waketimesplit[1]), second = int(waketimesplit[2]), microsecond = int(waketimesplit[3]))
+    sleeptime = now.replace(hour = int(sleeptimesplit[0]), minute = int(sleeptimesplit[1]), second = int(sleeptimesplit[2]), microsecond = int(sleeptimesplit[2]))
+
+    if now > sleeptime:
+        return False
+    elif now > waketime:
+        return True
 
 #Read config values from ini file and use to set global values
 def read_configs():
     config = configparser.ConfigParser()
     config.read('/home/pi/development/gcppistatus/status.ini')
-    
+
     STATUS_VARS['STATUS_CHECK_DELAY'] = float(config['DEFAULT']['STATUS_CHECK_DELAY'])
     STATUS_VARS['NUMPIXELS'] = int(config['DEFAULT']['NUMPIXELS'], 0)
     STATUS_VARS['MAXBRIGHTNESS'] = float(config['DEFAULT']['MAXBRIGHTNESS'])
@@ -280,8 +303,6 @@ def read_configs():
     STATUS_VARS['UNHEALTHY_COLOR'] = fancy.unpack(int(config['DEFAULT']['UNHEALTHY_COLOR'], 0))
     STATUS_VARS['WAKE_TIME'] = config['DEFAULT']['WAKE_TIME']
     STATUS_VARS['SLEEP_TIME']= config['DEFAULT']['SLEEP_TIME']
-
-    
 
 #Main function, kicks off status check and light control threads
 def main():
